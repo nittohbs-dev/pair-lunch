@@ -1,0 +1,17 @@
+name: Friday Lunch Reminder
+
+on:
+  schedule:
+    # Every Friday at 10:00 JST (01:00 UTC)
+    - cron: "0 1 * * 5"
+  workflow_dispatch:
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send LINE WORKS reminder
+        run: |
+          curl -X POST "${{ secrets.APP_URL }}/api/notify" \
+            -H "Content-Type: application/json" \
+            -d '{"message": "今週の金曜ペアランチのアンケートに回答してください！\n参加する方は「参加」を選択してください。"}'
