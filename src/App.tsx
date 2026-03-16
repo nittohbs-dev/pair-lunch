@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -14,38 +14,60 @@ import { GroupCard } from "./components/GroupCard";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { MemberListPanel } from "./components/MemberListPanel";
 import { smartShuffle, groupsToText } from "./lib/shuffle";
-import { getMembers, saveMembers, addHistoryEntry } from "./lib/storage";
-import type { Group, Member } from "./types";
+import {
+  getMembers,
+  saveMembers,
+  getHistory,
+  addHistoryEntry,
+  getSettings,
+  getPairCounts,
+} from "./lib/storage";
+import type { Group, Member, PairHistory, AppSettings } from "./types";
 
 type Tab = "dashboard" | "settings";
 
 export default function App() {
   const [tab, setTab] = useState<Tab>("dashboard");
-  const [members, setMembers] = useState<Member[]>(getMembers);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [history, setHistory] = useState<PairHistory[]>([]);
+  const [settings, setSettings] = useState<AppSettings>({ targetGroupSize: 4 });
   const [groups, setGroups] = useState<Group[]>([]);
   const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const sensors = useSensors(useSensor(PointerSensor));
 
-  function handleMembersChange(updated: Member[]) {
+  useEffect(() => {
+    Promise.all([getMembers(), getHistory(), getSettings()])
+      .then(([m, h, s]) => {
+        setMembers(m);
+        setHistory(h);
+        setSettings(s);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleMembersChange(updated: Member[]) {
     setMembers(updated);
-    saveMembers(updated);
-    // reset groups when member list changes
     setGroups([]);
+    await saveMembers(updated);
   }
 
   function handleShuffle() {
     const attending = members.filter((m) => m.attending);
     if (attending.length === 0) return;
-    setGroups(smartShuffle(attending));
+    const pairCounts = getPairCounts(history);
+    setGroups(smartShuffle(attending, pairCounts, settings.targetGroupSize));
   }
 
-  function handleSaveAndCopy() {
+  async function handleSaveAndCopy() {
     if (groups.length === 0) return;
-    addHistoryEntry({
+    const entry: PairHistory = {
       date: new Date().toISOString().split("T")[0],
       groups,
-    });
+    };
+    await addHistoryEntry(entry);
+    setHistory((prev) => [entry, ...prev].slice(0, 20));
     const text = groupsToText(groups);
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
@@ -79,6 +101,14 @@ export default function App() {
 
   const attendingCount = members.filter((m) => m.attending).length;
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <p className="text-gray-400 text-sm">読み込み中...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white">
       <header className="border-b">
@@ -105,16 +135,14 @@ export default function App() {
 
       <main className="max-w-5xl mx-auto px-4 py-6">
         {tab === "settings" ? (
-          <SettingsPanel />
+          <SettingsPanel settings={settings} onSettingsChange={setSettings} />
         ) : (
           <div className="space-y-6">
-            {/* Member management */}
             <div className="rounded-lg border p-4 space-y-3">
               <h2 className="font-semibold text-sm text-gray-600">メンバー管理</h2>
               <MemberListPanel members={members} onChange={handleMembersChange} />
             </div>
 
-            {/* Action bar */}
             <div className="flex flex-wrap gap-3 items-center">
               <Button onClick={handleShuffle} disabled={attendingCount === 0}>
                 シャッフル実行
@@ -133,7 +161,6 @@ export default function App() {
               )}
             </div>
 
-            {/* Groups preview */}
             {groups.length > 0 ? (
               <DndContext
                 sensors={sensors}

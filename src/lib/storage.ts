@@ -1,59 +1,63 @@
+import { supabase } from "./supabase";
 import type { PairHistory, Member, AppSettings } from "../types";
 
-const HISTORY_KEY = "pair_lunch_history";
-const MEMBERS_KEY = "pair_lunch_members";
-const SETTINGS_KEY = "pair_lunch_settings";
+export async function getMembers(): Promise<Member[]> {
+  const { data, error } = await supabase.from("members").select("*");
+  if (error) throw error;
+  return data ?? [];
+}
 
-export function getHistory(): PairHistory[] {
-  try {
-    return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
-  } catch {
-    return [];
+export async function saveMembers(members: Member[]): Promise<void> {
+  await supabase.from("members").delete().neq("id", "");
+  if (members.length > 0) {
+    const { error } = await supabase.from("members").insert(
+      members.map((m) => ({
+        id: m.id,
+        name: m.name,
+        department: m.department,
+        attending: m.attending,
+        email: m.email ?? "",
+      }))
+    );
+    if (error) throw error;
   }
 }
 
-export function saveHistory(history: PairHistory[]): void {
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+export async function getHistory(): Promise<PairHistory[]> {
+  const { data, error } = await supabase
+    .from("history")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(20);
+  if (error) throw error;
+  return (data ?? []).map((row) => ({ date: row.date, groups: row.groups }));
 }
 
-export function addHistoryEntry(entry: PairHistory): void {
-  const history = getHistory();
-  history.unshift(entry);
-  // keep last 20 weeks
-  saveHistory(history.slice(0, 20));
+export async function addHistoryEntry(entry: PairHistory): Promise<void> {
+  const { error } = await supabase
+    .from("history")
+    .insert({ date: entry.date, groups: entry.groups });
+  if (error) throw error;
 }
 
-export function getMembers(): Member[] {
-  try {
-    return JSON.parse(localStorage.getItem(MEMBERS_KEY) || "[]");
-  } catch {
-    return [];
-  }
+export async function getSettings(): Promise<AppSettings> {
+  const { data, error } = await supabase
+    .from("settings")
+    .select("*")
+    .eq("id", 1)
+    .single();
+  if (error || !data) return { targetGroupSize: 4 };
+  return { targetGroupSize: data.target_group_size };
 }
 
-export function saveMembers(members: Member[]): void {
-  localStorage.setItem(MEMBERS_KEY, JSON.stringify(members));
+export async function saveSettings(settings: AppSettings): Promise<void> {
+  const { error } = await supabase
+    .from("settings")
+    .upsert({ id: 1, target_group_size: settings.targetGroupSize });
+  if (error) throw error;
 }
 
-export function getSettings(): AppSettings {
-  try {
-    const stored = localStorage.getItem(SETTINGS_KEY);
-    if (stored) return JSON.parse(stored);
-  } catch {}
-  return {
-    targetGroupSize: 4,
-  };
-}
-
-export function saveSettings(settings: AppSettings): void {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-}
-
-/**
- * Returns a map of pair-key → count of how many times they've been grouped together.
- */
-export function getPairCounts(): Map<string, number> {
-  const history = getHistory();
+export function getPairCounts(history: PairHistory[]): Map<string, number> {
   const counts = new Map<string, number>();
   for (const entry of history) {
     for (const group of entry.groups) {

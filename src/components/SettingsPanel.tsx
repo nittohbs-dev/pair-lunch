@@ -1,13 +1,20 @@
 import { useState } from "react";
 import { Button } from "./ui/button";
-import { getSettings, saveSettings } from "../lib/storage";
+import { saveSettings } from "../lib/storage";
 import type { AppSettings } from "../types";
 
-export function SettingsPanel() {
-  const [settings, setSettings] = useState<AppSettings>(getSettings);
+interface Props {
+  settings: AppSettings;
+  onSettingsChange: (settings: AppSettings) => void;
+}
 
-  function handleSave() {
-    saveSettings(settings);
+export function SettingsPanel({ settings, onSettingsChange }: Props) {
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    await saveSettings(settings);
+    setSaving(false);
     alert("設定を保存しました");
   }
 
@@ -24,15 +31,15 @@ export function SettingsPanel() {
             min={2}
             max={8}
             onChange={(e) =>
-              setSettings({ ...settings, targetGroupSize: Number(e.target.value) })
+              onSettingsChange({ ...settings, targetGroupSize: Number(e.target.value) })
             }
           />
           <p className="text-xs text-gray-400 mt-1">
             例: 4 → 13人なら 3:3:3:4 に自動配分
           </p>
         </div>
-        <Button onClick={handleSave} className="w-full">
-          保存
+        <Button onClick={handleSave} className="w-full" disabled={saving}>
+          {saving ? "保存中..." : "保存"}
         </Button>
       </div>
     </div>
