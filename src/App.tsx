@@ -1,41 +1,19 @@
 import { useState, useEffect } from "react";
-import {
-  DndContext,
-  type DragEndEvent,
-  type DragOverEvent,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import { Button } from "./components/ui/button";
-import { GroupCard } from "./components/GroupCard";
-import { SettingsPanel } from "./components/SettingsPanel";
 import { MemberListPanel } from "./components/MemberListPanel";
-import { smartShuffle, groupsToText } from "./lib/shuffle";
-import {
-  getMembers,
-  saveMembers,
-  getHistory,
-  addHistoryEntry,
-  getSettings,
-  getPairCounts,
-} from "./lib/storage";
-import type { Group, Member, PairHistory, AppSettings } from "./types";
+import { ShufflePanel } from "./components/ShufflePanel";
+import { SettingsPanel } from "./components/SettingsPanel";
+import { getMembers, saveMembers, getHistory, getSettings } from "./lib/storage";
+import type { Member, PairHistory, AppSettings } from "./types";
 
-type Tab = "dashboard" | "settings";
+type Tab = "members" | "shuffle" | "settings";
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>("dashboard");
+  const [tab, setTab] = useState<Tab>("members");
   const [members, setMembers] = useState<Member[]>([]);
   const [history, setHistory] = useState<PairHistory[]>([]);
   const [settings, setSettings] = useState<AppSettings>({ targetGroupSize: 4 });
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
-
-  const sensors = useSensors(useSensor(PointerSensor));
 
   useEffect(() => {
     Promise.all([getMembers(), getHistory(), getSettings()])
@@ -44,62 +22,14 @@ export default function App() {
         setHistory(h);
         setSettings(s);
       })
+      .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
 
   async function handleMembersChange(updated: Member[]) {
     setMembers(updated);
-    setGroups([]);
     await saveMembers(updated);
   }
-
-  function handleShuffle() {
-    const attending = members.filter((m) => m.attending);
-    if (attending.length === 0) return;
-    const pairCounts = getPairCounts(history);
-    setGroups(smartShuffle(attending, pairCounts, settings.targetGroupSize));
-  }
-
-  async function handleSaveAndCopy() {
-    if (groups.length === 0) return;
-    const entry: PairHistory = {
-      date: new Date().toISOString().split("T")[0],
-      groups,
-    };
-    await addHistoryEntry(entry);
-    setHistory((prev) => [entry, ...prev].slice(0, 20));
-    const text = groupsToText(groups);
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  }
-
-  function handleDragOver(event: DragOverEvent) {
-    const { active, over } = event;
-    if (!over) return;
-    const activeGroupId = active.data.current?.groupId as string;
-    const overGroupId = (over.data.current?.groupId as string) ?? (over.id as string);
-    if (!activeGroupId || activeGroupId === overGroupId) return;
-
-    setGroups((prev) => {
-      const memberId = active.id as string;
-      const fromGroup = prev.find((g) => g.id === activeGroupId);
-      const toGroup = prev.find((g) => g.id === overGroupId);
-      if (!fromGroup || !toGroup) return prev;
-      const member = fromGroup.members.find((m) => m.id === memberId);
-      if (!member) return prev;
-      return prev.map((g) => {
-        if (g.id === activeGroupId) return { ...g, members: g.members.filter((m) => m.id !== memberId) };
-        if (g.id === overGroupId) return { ...g, members: [...g.members, member] };
-        return g;
-      });
-    });
-  }
-
-  function handleDragEnd(_event: DragEndEvent) {}
-
-  const attendingCount = members.filter((m) => m.attending).length;
 
   if (loading) {
     return (
@@ -109,88 +39,46 @@ export default function App() {
     );
   }
 
+  const tabs: { id: Tab; label: string }[] = [
+    { id: "members", label: "メンバー" },
+    { id: "shuffle", label: "シャッフル" },
+    { id: "settings", label: "設定" },
+  ];
+
   return (
     <div className="min-h-screen bg-white">
       <header className="border-b">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-xl font-bold">金曜ペアランチ</h1>
           <nav className="flex gap-2">
-            <Button
-              variant={tab === "dashboard" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setTab("dashboard")}
-            >
-              ダッシュボード
-            </Button>
-            <Button
-              variant={tab === "settings" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setTab("settings")}
-            >
-              設定
-            </Button>
+            {tabs.map((t) => (
+              <Button
+                key={t.id}
+                variant={tab === t.id ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setTab(t.id)}
+              >
+                {t.label}
+              </Button>
+            ))}
           </nav>
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6">
-        {tab === "settings" ? (
+        {tab === "members" && (
+          <MemberListPanel members={members} onChange={handleMembersChange} />
+        )}
+        {tab === "shuffle" && (
+          <ShufflePanel
+            members={members}
+            history={history}
+            settings={settings}
+            onHistoryAdd={(entry) => setHistory((prev) => [entry, ...prev].slice(0, 20))}
+          />
+        )}
+        {tab === "settings" && (
           <SettingsPanel settings={settings} onSettingsChange={setSettings} />
-        ) : (
-          <div className="space-y-6">
-            <div className="rounded-lg border p-4 space-y-3">
-              <h2 className="font-semibold text-sm text-gray-600">メンバー管理</h2>
-              <MemberListPanel members={members} onChange={handleMembersChange} />
-            </div>
-
-            <div className="flex flex-wrap gap-3 items-center">
-              <Button onClick={handleShuffle} disabled={attendingCount === 0}>
-                シャッフル実行
-              </Button>
-              <Button
-                onClick={handleSaveAndCopy}
-                disabled={groups.length === 0}
-                variant="secondary"
-              >
-                {copied ? "コピーしました!" : "テキストコピー & 履歴保存"}
-              </Button>
-              {attendingCount > 0 && (
-                <span className="text-sm text-gray-400 ml-auto">
-                  参加者: {attendingCount}名
-                </span>
-              )}
-            </div>
-
-            {groups.length > 0 ? (
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragOver={handleDragOver}
-                onDragEnd={handleDragEnd}
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {groups.map((group, i) => (
-                    <SortableContext
-                      key={group.id}
-                      id={group.id}
-                      items={group.members.map((m) => m.id)}
-                      strategy={rectSortingStrategy}
-                    >
-                      <GroupCard group={group} index={i} />
-                    </SortableContext>
-                  ))}
-                </div>
-              </DndContext>
-            ) : (
-              <div className="rounded-lg border border-dashed p-12 text-center text-gray-400">
-                <p className="text-sm">
-                  {attendingCount === 0
-                    ? "メンバーを追加して参加者を設定してください"
-                    : `${attendingCount}名が参加予定です。「シャッフル実行」でグループを生成します`}
-                </p>
-              </div>
-            )}
-          </div>
         )}
       </main>
     </div>
