@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button } from "./ui/button";
+import { UserPlus, Trash2 } from "lucide-react";
 import type { Member } from "../types";
 
 interface Props {
@@ -14,13 +14,10 @@ export function MemberListPanel({ members, onChange }: Props) {
   function handleAdd() {
     const trimmed = name.trim();
     if (!trimmed) return;
-    const newMember: Member = {
-      id: crypto.randomUUID(),
-      name: trimmed,
-      department: department.trim(),
-      attending: true,
-    };
-    onChange([...members, newMember]);
+    onChange([
+      ...members,
+      { id: crypto.randomUUID(), name: trimmed, department: department.trim(), attending: true },
+    ]);
     setName("");
     setDepartment("");
   }
@@ -40,82 +37,112 @@ export function MemberListPanel({ members, onChange }: Props) {
   const attendingCount = members.filter((m) => m.attending).length;
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-2xl space-y-6">
       {/* Add form */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-medium text-gray-700">メンバー追加</h3>
-        <div className="flex gap-2">
+      <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
+        <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">メンバー追加</h2>
+        <div className="flex gap-3">
           <input
-            className="border rounded-md px-3 py-2 text-sm flex-1"
+            className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-slate-400 transition-colors"
             placeholder="名前"
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={handleKeyDown}
           />
           <input
-            className="border rounded-md px-3 py-2 text-sm w-32"
+            className="w-36 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-slate-400 transition-colors"
             placeholder="部署（任意）"
             value={department}
             onChange={(e) => setDepartment(e.target.value)}
             onKeyDown={handleKeyDown}
           />
-          <Button onClick={handleAdd} size="sm">追加</Button>
+          <button
+            onClick={handleAdd}
+            className="flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-700 transition-colors"
+          >
+            <UserPlus size={16} />
+            追加
+          </button>
         </div>
       </div>
 
       {/* Member list */}
       {members.length > 0 && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-gray-700">参加・不参加</h3>
-            <span className="text-xs text-gray-400">{attendingCount}名参加 / {members.length - attendingCount}名不参加</span>
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">参加・不参加</h2>
+            <span className="text-xs text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
+              {attendingCount}名参加 / {members.length - attendingCount}名不参加
+            </span>
           </div>
-          <div className="divide-y border rounded-lg overflow-hidden">
+          <div className="divide-y divide-slate-100">
             {members.map((m) => (
               <div
                 key={m.id}
-                className={`flex items-center gap-4 px-4 py-3 ${
-                  m.attending ? "bg-white" : "bg-gray-50"
+                className={`flex items-center gap-4 px-6 py-4 transition-colors ${
+                  m.attending ? "bg-white" : "bg-slate-50"
                 }`}
               >
+                {/* Avatar */}
+                <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0">
+                  <span className="text-sm font-semibold text-slate-600">
+                    {m.name.charAt(0)}
+                  </span>
+                </div>
+
+                {/* Name & dept */}
                 <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium">{m.name}</span>
+                  <p className={`text-sm font-medium ${m.attending ? "text-slate-900" : "text-slate-400"}`}>
+                    {m.name}
+                  </p>
                   {m.department && (
-                    <span className="text-xs text-gray-400 ml-2">{m.department}</span>
+                    <p className="text-xs text-slate-400">{m.department}</p>
                   )}
                 </div>
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-1.5 cursor-pointer">
+
+                {/* Radio buttons */}
+                <div className="flex items-center gap-5">
+                  <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="radio"
                       name={`attendance-${m.id}`}
                       checked={m.attending}
                       onChange={() => handleAttendance(m.id, true)}
-                      className="accent-blue-500"
+                      className="w-4 h-4 accent-slate-900 cursor-pointer"
                     />
-                    <span className="text-sm text-gray-700">参加</span>
+                    <span className="text-sm text-slate-700">参加</span>
                   </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer">
+                  <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="radio"
                       name={`attendance-${m.id}`}
                       checked={!m.attending}
                       onChange={() => handleAttendance(m.id, false)}
-                      className="accent-gray-400"
+                      className="w-4 h-4 accent-slate-400 cursor-pointer"
                     />
-                    <span className="text-sm text-gray-500">不参加</span>
+                    <span className="text-sm text-slate-400">不参加</span>
                   </label>
                 </div>
+
+                {/* Delete */}
                 <button
                   onClick={() => handleDelete(m.id)}
-                  className="text-gray-300 hover:text-red-400 text-lg leading-none flex-shrink-0"
-                  title="削除"
+                  className="text-slate-300 hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-red-50"
                 >
-                  ×
+                  <Trash2 size={15} />
                 </button>
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {members.length === 0 && (
+        <div className="bg-white rounded-2xl shadow-sm p-16 text-center">
+          <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <UserPlus size={24} className="text-slate-400" />
+          </div>
+          <p className="text-sm text-slate-400">まだメンバーがいません。上から追加してください。</p>
         </div>
       )}
     </div>
