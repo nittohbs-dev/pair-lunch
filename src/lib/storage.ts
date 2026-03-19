@@ -57,6 +57,26 @@ export async function saveSettings(settings: AppSettings): Promise<void> {
   if (error) throw error;
 }
 
+export async function getCurrentSession(): Promise<PairHistory | null> {
+  const { data, error } = await supabase
+    .from("current_session")
+    .select("*")
+    .eq("id", 1)
+    .single();
+  if (error || !data) return null;
+  return { date: data.date, groups: data.groups };
+}
+
+export async function saveCurrentSession(entry: PairHistory): Promise<void> {
+  const { error } = await supabase.from("current_session").upsert({
+    id: 1,
+    date: entry.date,
+    groups: entry.groups,
+    shuffled_at: new Date().toISOString(),
+  });
+  if (error) throw error;
+}
+
 export function getPairCounts(history: PairHistory[]): Map<string, number> {
   const counts = new Map<string, number>();
   for (const entry of history) {

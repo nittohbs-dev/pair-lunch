@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -9,10 +9,10 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
-import { Shuffle, Copy, Check } from "lucide-react";
+import { Shuffle, Copy, Check, RefreshCw } from "lucide-react";
 import { GroupCard } from "./GroupCard";
 import { smartShuffle, groupsToText } from "../lib/shuffle";
-import { addHistoryEntry, getPairCounts } from "../lib/storage";
+import { addHistoryEntry, getPairCounts, getCurrentSession, saveCurrentSession } from "../lib/storage";
 import type { Member, Group, PairHistory, AppSettings } from "../types";
 
 interface Props {
@@ -24,30 +24,53 @@ interface Props {
 
 export function ShufflePanel({ members, history, settings, onHistoryAdd }: Props) {
   const [groups, setGroups] = useState<Group[]>([]);
+  const [sessionDate, setSessionDate] = useState<string>("");
   const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor));
   const attendingCount = members.filter((m) => m.attending).length;
 
-  function handleShuffle() {
+  async function loadSession() {
+    const session = await getCurrentSession();
+    if (session) {
+      setGroups(session.groups);
+      setSessionDate(session.date);
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    loadSession();
+  }, []);
+
+  async function handleShuffle() {
     const attending = members.filter((m) => m.attending);
     if (attending.length === 0) return;
     const pairCounts = getPairCounts(history);
-    setGroups(smartShuffle(attending, pairCounts, settings.targetGroupSize));
+    const newGroups = smartShuffle(attending, pairCounts, settings.targetGroupSize);
+    const date = new Date().toISOString().split("T")[0];
+    setGroups(newGroups);
+    setSessionDate(date);
+    await saveCurrentSession({ date, groups: newGroups });
   }
 
   async function handleSaveAndCopy() {
     if (groups.length === 0) return;
-    const entry: PairHistory = {
-      date: new Date().toISOString().split("T")[0],
-      groups,
-    };
+    const entry: PairHistory = { date: sessionDate, groups };
     await addHistoryEntry(entry);
     onHistoryAdd(entry);
     navigator.clipboard.writeText(groupsToText(groups)).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await loadSession();
+    setRefreshing(false);
   }
 
   function handleDragOver(event: DragOverEvent) {
@@ -74,6 +97,14 @@ export function ShufflePanel({ members, history, settings, onHistoryAdd }: Props
 
   function handleDragEnd(_event: DragEndEvent) {}
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Action card */}
@@ -95,9 +126,18 @@ export function ShufflePanel({ members, history, settings, onHistoryAdd }: Props
             {copied ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
             {copied ? "コピーしました！" : "テキストコピー & 履歴保存"}
           </button>
-          {attendingCount > 0 && (
-            <span className="ml-auto text-sm text-slate-400 bg-slate-100 px-3 py-1.5 rounded-full">
-              参加者 {attendingCount}名
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-2 bg-slate-100 text-slate-500 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-200 disabled:opacity-40 transition-colors"
+            title="最新の結果を取得"
+          >
+            <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+            更新
+          </button>
+          {sessionDate && (
+            <span className="ml-auto text-xs text-slate-400 bg-slate-100 px-3 py-1.5 rounded-full">
+              {sessionDate} のグループ
             </span>
           )}
         </div>
