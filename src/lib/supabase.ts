@@ -1,6 +1,12 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+// Viteの場合は import.meta.env を使う
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// ここでエラーが出るのを防ぐためのチェック
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error("環境変数が読み込めていません。 .envファイルと再起動を確認してください。")
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
