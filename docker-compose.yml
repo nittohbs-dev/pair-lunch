@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pair-lunch-app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+      - LW_CLIENT_ID=${LW_CLIENT_ID:-}
+      - LW_CLIENT_SECRET=${LW_CLIENT_SECRET:-}
+      - LW_SERVICE_ACCOUNT=${LW_SERVICE_ACCOUNT:-}
+      - LW_PRIVATE_KEY=${LW_PRIVATE_KEY:-}
+      - LW_BOT_ID=${LW_BOT_ID:-}
+      - LW_CHANNEL_ID=${LW_CHANNEL_ID:-}
+      - LW_FORM_ID=${LW_FORM_ID:-}
+      - LW_DOMAIN_ID=${LW_DOMAIN_ID:-}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    # Uncomment for production with volumes
+    # volumes:
+    #   - ./dist:/app/dist:ro
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
