@@ -2,7 +2,8 @@
 set -e
 
 # HTML ファイルに環境変数を動的に注入
-INDEX_FILE="/usr/share/nginx/html/index.html"
+# Pylon の自動生成 Dockerfile は http-server を使用するため、/app/dist を参照
+INDEX_FILE="/app/dist/index.html"
 
 echo "🔄 Injecting environment variables into index.html..."
 echo ""
@@ -56,12 +57,17 @@ if [ -f "$INDEX_FILE" ]; then
   echo "✅ Environment variables injected successfully"
 else
   echo "❌ Error: $INDEX_FILE not found"
+  echo "   Expected path: $INDEX_FILE"
+  echo "   Available files in /app/dist:"
+  ls -la /app/dist/ || echo "   /app/dist directory does not exist"
   exit 1
 fi
 
 echo ""
-echo "🚀 Starting Nginx..."
+echo "🚀 Starting application..."
 echo ""
 
-# Nginx を起動
-exec nginx -g "daemon off;"
+# メインプロセスを実行
+# Pylon の自動生成 Dockerfile は npm scripts や http-server で実行される想定
+# ここでは、指定されたコマンドを実行
+exec "$@"
