@@ -21,20 +21,18 @@ if [ -f "$INDEX_FILE" ]; then
   echo "✓ Backup created: $INDEX_FILE.bak"
   echo ""
 
-  # sed で環境変数を置換（/ の代わりに | を区切り文字として使用）
+  # sed で環境変数を置換（各行で "$INDEX_FILE" を指定）
   echo "🔧 Running sed replacements..."
-  sed -i \
-    "s|\${VITE_SUPABASE_URL}|${VITE_SUPABASE_URL}|g" \
-    "s|\${VITE_SUPABASE_ANON_KEY}|${VITE_SUPABASE_ANON_KEY}|g" \
-    "s|\${LW_CLIENT_ID}|${LW_CLIENT_ID}|g" \
-    "s|\${LW_CLIENT_SECRET}|${LW_CLIENT_SECRET}|g" \
-    "s|\${LW_SERVICE_ACCOUNT}|${LW_SERVICE_ACCOUNT}|g" \
-    "s|\${LW_PRIVATE_KEY}|${LW_PRIVATE_KEY}|g" \
-    "s|\${LW_BOT_ID}|${LW_BOT_ID}|g" \
-    "s|\${LW_CHANNEL_ID}|${LW_CHANNEL_ID}|g" \
-    "s|\${LW_FORM_ID}|${LW_FORM_ID}|g" \
-    "s|\${LW_DOMAIN_ID}|${LW_DOMAIN_ID}|g" \
-    "$INDEX_FILE"
+  sed -i "s|\${VITE_SUPABASE_URL}|${VITE_SUPABASE_URL}|g" "$INDEX_FILE"
+  sed -i "s|\${VITE_SUPABASE_ANON_KEY}|${VITE_SUPABASE_ANON_KEY}|g" "$INDEX_FILE"
+  sed -i "s|\${LW_CLIENT_ID}|${LW_CLIENT_ID}|g" "$INDEX_FILE"
+  sed -i "s|\${LW_CLIENT_SECRET}|${LW_CLIENT_SECRET}|g" "$INDEX_FILE"
+  sed -i "s|\${LW_SERVICE_ACCOUNT}|${LW_SERVICE_ACCOUNT}|g" "$INDEX_FILE"
+  sed -i "s|\${LW_PRIVATE_KEY}|${LW_PRIVATE_KEY}|g" "$INDEX_FILE"
+  sed -i "s|\${LW_BOT_ID}|${LW_BOT_ID}|g" "$INDEX_FILE"
+  sed -i "s|\${LW_CHANNEL_ID}|${LW_CHANNEL_ID}|g" "$INDEX_FILE"
+  sed -i "s|\${LW_FORM_ID}|${LW_FORM_ID}|g" "$INDEX_FILE"
+  sed -i "s|\${LW_DOMAIN_ID}|${LW_DOMAIN_ID}|g" "$INDEX_FILE"
 
   echo ""
 
