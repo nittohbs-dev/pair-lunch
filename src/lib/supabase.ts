@@ -1,8 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Viteの場合は import.meta.env を使う
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+// ランタイム環境変数（HTML注入）とビルド時環境変数の両方に対応
+// @ts-ignore
+const supabaseUrl = window.__env__?.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL
+// @ts-ignore
+const supabaseAnonKey = window.__env__?.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY
 
 // ここでエラーが出るのを防ぐためのチェック
 if (!supabaseUrl || !supabaseAnonKey) {

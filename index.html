@@ -8,6 +8,21 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Environment variables injected at runtime -->
+    <script>
+      window.__env__ = {
+        VITE_SUPABASE_URL: '${VITE_SUPABASE_URL}',
+        VITE_SUPABASE_ANON_KEY: '${VITE_SUPABASE_ANON_KEY}',
+        LW_CLIENT_ID: '${LW_CLIENT_ID}',
+        LW_CLIENT_SECRET: '${LW_CLIENT_SECRET}',
+        LW_SERVICE_ACCOUNT: '${LW_SERVICE_ACCOUNT}',
+        LW_PRIVATE_KEY: '${LW_PRIVATE_KEY}',
+        LW_BOT_ID: '${LW_BOT_ID}',
+        LW_CHANNEL_ID: '${LW_CHANNEL_ID}',
+        LW_FORM_ID: '${LW_FORM_ID}',
+        LW_DOMAIN_ID: '${LW_DOMAIN_ID}'
+      };
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
